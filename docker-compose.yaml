@@ -1,0 +1,122 @@
+services:
+##### Memcached
+  memcached:
+    container_name: memcached
+    image: memcached:alpine
+    ports:
+      - 127.0.0.1:11211:11211
+    command:
+      - --conn-limit=1024
+      - --memory-limit=64
+      - --threads=4
+    restart: unless-stopped
+    networks:
+      fusionpbx-net:
+        ipv4_address: 10.x.x.x
+        ipv6_address: fd8b:xxxx:xxxx:xxxx::x
+
+##### nginx
+  nginx:
+    container_name: nginx
+    image: nginx:alpine
+    tty: true
+    volumes:
+      - ./resources/nginx:/etc/nginx/conf.d
+      - ./letsencrypt:/etc/letsencrypt:ro
+      - ./fusionpbx:/var/www/fusionpbx
+      - ./nginx_log:/var/log/nginx
+    restart: unless-stopped
+    network_mode: "host"
+
+##### postgresql https://hub.docker.com/_/postgres
+  postgresql:
+    container_name: postgresql
+    image: postgres:17-alpine
+    ports:
+        - 127.0.0.1:5432:5432
+    restart: unless-stopped
+    # set shared memory limit when using docker compose
+    shm_size: 128mb
+    # or set shared memory limit when deploy via swarm stack
+    volumes:
+      - ./db:/var/lib/postgresql
+    environment:
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRES_USER=${DATABASE_USERNAME}
+      - POSTGRES_DB=${DATABASE_NAME}
+      - PGDATA=/var/lib/postgresql/17/docker
+    networks:
+      fusionpbx-net:
+        ipv4_address: 10.x.x.x
+        ipv6_address: fd8b:xxxx:xxxx:xxxx::x
+
+### PHP-FPM(FusionPBX)
+  php-fpm:
+    container_name: php-fpm
+    build:
+      context: ./docker_files
+      dockerfile: php-fpm-fusionpbx
+    image: php-8.2-fpm:20250817
+    volumes:
+      - ./php-fpm_conf/php.ini:/usr/local/etc/php/php.ini
+      - ./php-fpm_conf/supevisor.conf:/etc/supervisor/conf.d/supevisor.conf:ro
+      - ./php_log:/var/log/supervisor
+      - ./fusionpbx:/var/www/fusionpbx
+      - ./resources/fusionpbx/config.conf:/etc/fusionpbx/config.conf
+      - ./fusionpbx/app/switch/resources/conf:/etc/freeswitch
+      - ./fusionpbx/app/switch/resources/scripts:/usr/share/freeswitch/scripts
+      - freeswitch_lib:/var/lib/freeswitch
+      - freeswitch_usr_lib:/usr/lib/freeswitch
+      - freeswitch_share:/usr/share/freeswitch
+      - freeswitch_log:/var/log/freeswitch
+      - freeswitch_run:/var/run/freeswitch
+      - ./cache:/var/cache/fusionpbx
+      - ./resources:/opt/fusionpbx-installer-sh
+    depends_on:
+      - freeswitch
+    restart: unless-stopped
+    network_mode: "host"
+
+### FreeSwitch
+  freeswitch:
+    container_name: freeswitch
+    build:
+      context: ./docker_files/freeswitch_master
+      dockerfile: Dockerfile
+    image: freeswitch:20250817
+    volumes:
+      - ./letsencrypt:/etc/freeswitch/tls
+      - ./resources/fusionpbx/config.conf:/etc/fusionpbx/config.conf
+      - ./fusionpbx/app/switch/resources/conf:/etc/freeswitch
+      - ./fusionpbx/app/switch/resources/scripts:/usr/share/freeswitch/scripts
+      - ./tmp:/tmp
+      - freeswitch_lib:/var/lib/freeswitch
+      - freeswitch_usr_lib:/usr/lib/freeswitch
+      - freeswitch_share:/usr/share/freeswitch
+      - freeswitch_log:/var/log/freeswitch
+      - freeswitch_run:/var/run/freeswitch
+      - ./cache:/var/cache/fusionpbx
+    depends_on:
+      - nginx
+      - postgresql
+    restart: unless-stopped
+    cap_add:
+      - SYS_RESOURCE
+      - SYS_NICE
+      - IPC_LOCK
+    network_mode: "host"
+
+networks:
+  fusionpbx-net:
+    enable_ipv6: true
+    ipam:
+      driver: default
+      config:
+        - subnet: "10.x.x.0/24"
+        - subnet: "fd8b:xxxx:xxxx:x::/64"
+volumes:
+  freeswitch_lib:
+  freeswitch_usr_lib:
+  freeswitch_share:
+  freeswitch_log:
+  freeswitch_run:
