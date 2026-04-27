@@ -1,0 +1,34 @@
+name: Daily Build
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  build-php-fpm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build PHP-FPM Custom Image
+        run: |
+          docker build -f docker_files/php-fpm-fusionpbx -t php-8.2-fpm:latest docker_files/
+
+  build-freeswitch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build FreeSWITCH Custom Image
+        env:
+          SIGNALWIRE_TOKEN: ${{ secrets.SIGNALWIRE_TOKEN }}
+        run: |
+          if [ -z "$SIGNALWIRE_TOKEN" ]; then
+            echo "SIGNALWIRE_TOKEN secret is not set. Using default token from Dockerfile if any."
+            docker build -f docker_files/freeswitch_master/Dockerfile -t freeswitch:latest docker_files/freeswitch_master/
+          else
+            docker build --build-arg TOKEN="${SIGNALWIRE_TOKEN}" -f docker_files/freeswitch_master/Dockerfile -t freeswitch:latest docker_files/freeswitch_master/
+          fi
