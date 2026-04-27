@@ -1,34 +1,58 @@
-name: Daily Build
+name: Daily Build and Push to GHCR
 
 on:
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
-  build-php-fpm:
+  build-and-push:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build PHP-FPM Custom Image
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get latest FusionPBX version
+        id: get_version
         run: |
-          docker build -f docker_files/php-fpm-fusionpbx -t php-8.2-fpm:latest docker_files/
+          VERSION=$(curl -sL https://api.github.com/repos/fusionpbx/fusionpbx/tags | grep '"name"' | head -n 1 | awk -F'"' '{print $4}')
+          if [ -z "$VERSION" ]; then
+            VERSION="latest"
+          fi
+          echo "FUSIONPBX_VERSION=${VERSION}" >> $GITHUB_ENV
 
-  build-freeswitch:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Build and Push PHP-FPM Custom Image
+        run: |
+          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/php-fpm-fusionpbx-${{ env.FUSIONPBX_VERSION }}-build"
+          # Convert to lowercase as GHCR requires lowercase repository names
+          IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
 
-      - name: Build FreeSWITCH Custom Image
+          docker build -f docker_files/php-fpm-fusionpbx -t $IMAGE_NAME docker_files/
+          docker push $IMAGE_NAME
+
+      - name: Build and Push FreeSWITCH Custom Image
         env:
           SIGNALWIRE_TOKEN: ${{ secrets.SIGNALWIRE_TOKEN }}
         run: |
+          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/freeswitch-fusionpbx-${{ env.FUSIONPBX_VERSION }}-build"
+          # Convert to lowercase
+          IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
+
           if [ -z "$SIGNALWIRE_TOKEN" ]; then
             echo "SIGNALWIRE_TOKEN secret is not set. Using default token from Dockerfile if any."
-            docker build -f docker_files/freeswitch_master/Dockerfile -t freeswitch:latest docker_files/freeswitch_master/
+            docker build -f docker_files/freeswitch_master/Dockerfile -t $IMAGE_NAME docker_files/freeswitch_master/
           else
-            docker build --build-arg TOKEN="${SIGNALWIRE_TOKEN}" -f docker_files/freeswitch_master/Dockerfile -t freeswitch:latest docker_files/freeswitch_master/
+            docker build --build-arg TOKEN="${SIGNALWIRE_TOKEN}" -f docker_files/freeswitch_master/Dockerfile -t $IMAGE_NAME docker_files/freeswitch_master/
           fi
+          docker push $IMAGE_NAME
