@@ -37,7 +37,7 @@ jobs:
 
       - name: Build and Push PHP-FPM Custom Image
         run: |
-          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/php-fpm-fusionpbx-${{ env.FUSIONPBX_VERSION }}-build"
+          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/php-fpm-fusionpbx-${{ env.FUSIONPBX_VERSION }}-${{ github.run_number }}"
           # Convert to lowercase as GHCR requires lowercase repository names
           IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
 
@@ -48,7 +48,7 @@ jobs:
         env:
           SIGNALWIRE_TOKEN: ${{ secrets.SIGNALWIRE_TOKEN }}
         run: |
-          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/freeswitch-fusionpbx-${{ env.FUSIONPBX_VERSION }}-build"
+          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/freeswitch-fusionpbx-${{ env.FUSIONPBX_VERSION }}-${{ github.run_number }}"
           # Convert to lowercase
           IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
 
