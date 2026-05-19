@@ -1,0 +1,82 @@
+# Default values for fusionpbx.
+
+global:
+  domain: example.com
+
+persistence:
+  enabled: true
+  storageClass: ""
+  # volumes configuration
+  volumes:
+    web:
+      size: 5Gi
+      accessMode: ReadWriteMany
+    freeswitchData:
+      size: 5Gi
+      accessMode: ReadWriteOnce
+    freeswitchMedia:
+      size: 10Gi
+      accessMode: ReadWriteMany
+    freeswitchConf:
+      size: 2Gi
+      accessMode: ReadWriteMany
+    logs:
+      size: 5Gi
+      accessMode: ReadWriteMany
+    letsencrypt:
+      size: 1Gi
+      accessMode: ReadWriteMany
+
+memcached:
+  enabled: true
+  image:
+    repository: memcached
+    tag: alpine
+  replicaCount: 1
+
+postgresql:
+  # Set to true to deploy PostgreSQL within the cluster
+  # Set to false to use an external PostgreSQL database
+  enabled: true
+  image:
+    repository: postgres
+    tag: 17-alpine
+  auth:
+    username: fusionpbx
+    password: fusionpbx_password
+    database: fusionpbx
+  # If enabled is false, define external database details here
+  external:
+    host: external-db.example.com
+    port: 5432
+    username: fusionpbx
+    password: fusionpbx_password
+    database: fusionpbx
+
+nginx:
+  replicaCount: 1
+  image:
+    repository: nginx
+    tag: alpine
+  hostNetwork: true
+  
+phpFpm:
+  replicaCount: 1
+  image:
+    # Adjust this to match your GHCR image or local built image
+    repository: php-8.2-fpm
+    tag: "20250817"
+  hostNetwork: true
+
+freeswitch:
+  # Set replicaCount > 1 for High Availability (HA)
+  replicaCount: 2
+  image:
+    # Adjust this to match your GHCR image or local built image
+    repository: freeswitch
+    tag: "20250817"
+  hostNetwork: true
+  capAdd:
+    - SYS_RESOURCE
+    - SYS_NICE
+    - IPC_LOCK

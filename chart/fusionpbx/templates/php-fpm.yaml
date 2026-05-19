@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "fusionpbx.fullname" . }}-php-fpm
+  labels:
+    {{- include "fusionpbx.labels" . | nindent 4 }}
+    app.kubernetes.io/component: php-fpm
+spec:
+  replicas: {{ .Values.phpFpm.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "fusionpbx.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: php-fpm
+  template:
+    metadata:
+      labels:
+        {{- include "fusionpbx.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: php-fpm
+    spec:
+      {{- if .Values.phpFpm.hostNetwork }}
+      hostNetwork: true
+      {{- end }}
+      containers:
+        - name: php-fpm
+          image: "{{ .Values.phpFpm.image.repository }}:{{ .Values.phpFpm.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DATABASE_HOST
+              value: {{ include "fusionpbx.postgresql.host" . | quote }}
+            - name: DATABASE_PORT
+              value: {{ include "fusionpbx.postgresql.port" . | quote }}
+            - name: DATABASE_USERNAME
+              value: {{ include "fusionpbx.postgresql.user" . | quote }}
+            - name: DATABASE_PASSWORD
+              value: {{ include "fusionpbx.postgresql.password" . | quote }}
+            - name: DATABASE_NAME
+              value: {{ include "fusionpbx.postgresql.database" . | quote }}
+          volumeMounts:
+            - name: fusionpbx-web
+              mountPath: /var/www/fusionpbx
+              subPath: fusionpbx
+            - name: fusionpbx-freeswitch-conf
+              mountPath: /etc/fusionpbx/config.conf
+              subPath: config.conf
+            - name: fusionpbx-freeswitch-conf
+              mountPath: /etc/freeswitch
+              subPath: freeswitch_conf
+            - name: fusionpbx-freeswitch-conf
+              mountPath: /usr/share/freeswitch/scripts
+              subPath: freeswitch_scripts
+            - name: fusionpbx-freeswitch-media
+              mountPath: /var/lib/freeswitch/recordings
+              subPath: recordings
+            - name: fusionpbx-freeswitch-media
+              mountPath: /var/lib/freeswitch/storage
+              subPath: storage
+            - name: fusionpbx-logs
+              mountPath: /var/log/freeswitch
+              subPath: freeswitch_log
+            - name: fusionpbx-web
+              mountPath: /var/cache/fusionpbx
+              subPath: cache
+            - name: fusionpbx-web
+              mountPath: /opt/fusionpbx-installer-sh
+              subPath: resources
+      volumes:
+        - name: fusionpbx-web
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "fusionpbx.fullname" . }}-web
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: fusionpbx-freeswitch-conf
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "fusionpbx.fullname" . }}-freeswitchConf
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: fusionpbx-freeswitch-media
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "fusionpbx.fullname" . }}-freeswitchMedia
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: fusionpbx-logs
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "fusionpbx.fullname" . }}-logs
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fusionpbx.fullname" . }}-php-fpm
+  labels:
+    {{- include "fusionpbx.labels" . | nindent 4 }}
+    app.kubernetes.io/component: php-fpm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9000
+      targetPort: 9000
+      protocol: TCP
+      name: php-fpm
+  selector:
+    {{- include "fusionpbx.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: php-fpm

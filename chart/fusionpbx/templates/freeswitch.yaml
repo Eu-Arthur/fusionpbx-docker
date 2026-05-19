@@ -1,0 +1,160 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "fusionpbx.fullname" . }}-freeswitch
+  labels:
+    {{- include "fusionpbx.labels" . | nindent 4 }}
+    app.kubernetes.io/component: freeswitch
+spec:
+  replicas: {{ .Values.freeswitch.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "fusionpbx.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: freeswitch
+  template:
+    metadata:
+      labels:
+        {{- include "fusionpbx.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: freeswitch
+    spec:
+      {{- if .Values.freeswitch.hostNetwork }}
+      hostNetwork: true
+      {{- end }}
+      {{- if and .Values.freeswitch.hostNetwork (gt (int .Values.freeswitch.replicaCount) 1) }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/component
+                    operator: In
+                    values:
+                      - freeswitch
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - {{ include "fusionpbx.name" . }}
+              topologyKey: "kubernetes.io/hostname"
+      {{- end }}
+      containers:
+        - name: freeswitch
+          image: "{{ .Values.freeswitch.image.repository }}:{{ .Values.freeswitch.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            capabilities:
+              add:
+                {{- toYaml .Values.freeswitch.capAdd | nindent 16 }}
+          env:
+            - name: FS_PG_DSN
+              value: {{ include "fusionpbx.freeswitch.dsn" . | quote }}
+            - name: DATABASE_HOST
+              value: {{ include "fusionpbx.postgresql.host" . | quote }}
+            - name: DATABASE_PORT
+              value: {{ include "fusionpbx.postgresql.port" . | quote }}
+            - name: DATABASE_USERNAME
+              value: {{ include "fusionpbx.postgresql.user" . | quote }}
+            - name: DATABASE_PASSWORD
+              value: {{ include "fusionpbx.postgresql.password" . | quote }}
+            - name: DATABASE_NAME
+              value: {{ include "fusionpbx.postgresql.database" . | quote }}
+          ports:
+            - containerPort: 8021
+              protocol: TCP
+            - containerPort: 5060
+              protocol: TCP
+            - containerPort: 5060
+              protocol: UDP
+            - containerPort: 5080
+              protocol: TCP
+            - containerPort: 5080
+              protocol: UDP
+            - containerPort: 5061
+              protocol: TCP
+            - containerPort: 5061
+              protocol: UDP
+            - containerPort: 5081
+              protocol: TCP
+            - containerPort: 5081
+              protocol: UDP
+            - containerPort: 5066
+              protocol: TCP
+            - containerPort: 7443
+              protocol: TCP
+          volumeMounts:
+            - name: fusionpbx-letsencrypt
+              mountPath: /etc/freeswitch/tls
+              subPath: letsencrypt
+            - name: fusionpbx-freeswitch-conf
+              mountPath: /etc/fusionpbx/config.conf
+              subPath: config.conf
+            - name: fusionpbx-freeswitch-conf
+              mountPath: /etc/freeswitch
+              subPath: freeswitch_conf
+            - name: fusionpbx-freeswitch-conf
+              mountPath: /usr/share/freeswitch/scripts
+              subPath: freeswitch_scripts
+            - name: freeswitch-tmp
+              mountPath: /tmp
+            - name: freeswitch-local-data
+              mountPath: /var/lib/freeswitch
+            - name: fusionpbx-freeswitch-media
+              mountPath: /var/lib/freeswitch/recordings
+              subPath: recordings
+            - name: fusionpbx-freeswitch-media
+              mountPath: /var/lib/freeswitch/storage
+              subPath: storage
+            - name: freeswitch-local-data
+              mountPath: /usr/lib/freeswitch
+              subPath: usr_lib
+            - name: freeswitch-local-data
+              mountPath: /usr/share/freeswitch
+              subPath: usr_share
+            - name: fusionpbx-logs
+              mountPath: /var/log/freeswitch
+              subPath: freeswitch_log
+            - name: freeswitch-local-data
+              mountPath: /var/run/freeswitch
+              subPath: run
+            - name: fusionpbx-web
+              mountPath: /var/cache/fusionpbx
+              subPath: cache
+      volumes:
+        - name: freeswitch-tmp
+          emptyDir: {}
+        - name: freeswitch-local-data
+          emptyDir: {}
+        - name: fusionpbx-letsencrypt
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "fusionpbx.fullname" . }}-letsencrypt
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: fusionpbx-freeswitch-conf
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "fusionpbx.fullname" . }}-freeswitchConf
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: fusionpbx-freeswitch-media
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "fusionpbx.fullname" . }}-freeswitchMedia
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: fusionpbx-logs
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "fusionpbx.fullname" . }}-logs
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: fusionpbx-web
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "fusionpbx.fullname" . }}-web
+          {{- else }}
+          emptyDir: {}
+          {{- end }}

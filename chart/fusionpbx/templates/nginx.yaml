@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "fusionpbx.fullname" . }}-nginx
+  labels:
+    {{- include "fusionpbx.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nginx
+spec:
+  replicas: {{ .Values.nginx.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "fusionpbx.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: nginx
+  template:
+    metadata:
+      labels:
+        {{- include "fusionpbx.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: nginx
+    spec:
+      {{- if .Values.nginx.hostNetwork }}
+      hostNetwork: true
+      {{- end }}
+      containers:
+        - name: nginx
+          image: "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+            - name: https
+              containerPort: 443
+              protocol: TCP
+          volumeMounts:
+            - name: fusionpbx-web
+              mountPath: /var/www/fusionpbx
+              subPath: fusionpbx
+            - name: fusionpbx-freeswitch-conf
+              mountPath: /etc/nginx/conf.d
+              subPath: nginx_conf
+            - name: fusionpbx-letsencrypt
+              mountPath: /etc/letsencrypt
+              readOnly: true
+            - name: fusionpbx-logs
+              mountPath: /var/log/nginx
+              subPath: nginx_log
+      volumes:
+        - name: fusionpbx-web
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "fusionpbx.fullname" . }}-web
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: fusionpbx-freeswitch-conf
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "fusionpbx.fullname" . }}-freeswitchConf
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: fusionpbx-letsencrypt
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "fusionpbx.fullname" . }}-letsencrypt
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+        - name: fusionpbx-logs
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "fusionpbx.fullname" . }}-logs
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fusionpbx.fullname" . }}-nginx
+  labels:
+    {{- include "fusionpbx.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nginx
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: 443
+      targetPort: https
+      protocol: TCP
+      name: https
+  selector:
+    {{- include "fusionpbx.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: nginx
