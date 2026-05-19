@@ -17,25 +17,6 @@ spec:
         {{- include "fusionpbx.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: freeswitch
     spec:
-      {{- if .Values.freeswitch.hostNetwork }}
-      hostNetwork: true
-      {{- end }}
-      {{- if and .Values.freeswitch.hostNetwork (gt (int .Values.freeswitch.replicaCount) 1) }}
-      affinity:
-        podAntiAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchExpressions:
-                  - key: app.kubernetes.io/component
-                    operator: In
-                    values:
-                      - freeswitch
-                  - key: app.kubernetes.io/name
-                    operator: In
-                    values:
-                      - {{ include "fusionpbx.name" . }}
-              topologyKey: "kubernetes.io/hostname"
-      {{- end }}
       containers:
         - name: freeswitch
           image: "{{ .Values.freeswitch.image.repository }}:{{ .Values.freeswitch.image.tag }}"
@@ -147,3 +128,45 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fusionpbx.fullname" . }}-freeswitch
+  labels:
+    {{- include "fusionpbx.labels" . | nindent 4 }}
+    app.kubernetes.io/component: freeswitch
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8021
+      targetPort: 8021
+      protocol: TCP
+      name: esl
+    - port: 5060
+      targetPort: 5060
+      protocol: TCP
+      name: sip-tcp
+    - port: 5060
+      targetPort: 5060
+      protocol: UDP
+      name: sip-udp
+    - port: 5080
+      targetPort: 5080
+      protocol: TCP
+      name: sip-external-tcp
+    - port: 5080
+      targetPort: 5080
+      protocol: UDP
+      name: sip-external-udp
+    - port: 5061
+      targetPort: 5061
+      protocol: TCP
+      name: sips-tcp
+    - port: 5081
+      targetPort: 5081
+      protocol: TCP
+      name: sips-external-tcp
+  selector:
+    {{- include "fusionpbx.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: freeswitch

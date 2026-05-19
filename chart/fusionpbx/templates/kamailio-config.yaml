@@ -1,0 +1,68 @@
+{{- if .Values.freeswitch.kamailio.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "fusionpbx.fullname" . }}-kamailio
+  labels:
+    {{- include "fusionpbx.labels" . | nindent 4 }}
+data:
+  kamailio.cfg: |
+    #!KAMAILIO
+    
+    # -----------------------------------------------------------------
+    # Kamailio Basic SIP Proxy/Dispatcher configuration for FreeSWITCH
+    # -----------------------------------------------------------------
+
+    #!define WITH_MYSQL
+    #!define WITH_AUTH
+    #!define WITH_USRLOCDB
+
+    # Global Parameters
+    log_level=2
+    log_stderror=yes
+    
+    children=4
+    
+    # Port to listen on (default 5060)
+    listen=udp:0.0.0.0:5060
+    listen=tcp:0.0.0.0:5060
+    
+    # Modules
+    loadmodule "pv.so"
+    loadmodule "maxfwd.so"
+    loadmodule "sl.so"
+    loadmodule "rr.so"
+    loadmodule "textops.so"
+    loadmodule "siputils.so"
+    loadmodule "xlog.so"
+    loadmodule "sanity.so"
+    loadmodule "ctl.so"
+    loadmodule "tm.so"
+    loadmodule "tmx.so"
+    loadmodule "dispatcher.so"
+    
+    # Route logic
+    route {
+        # Initial Sanity Checks
+        if (!mf_process_maxfwd_header("10")) {
+            sl_send_reply("483", "Too Many Hops");
+            exit;
+        }
+
+        if (msg_apply_changes()) {
+            # Changes applied
+        }
+
+        # Dispatch to FreeSWITCH backend Service
+        # Kamailio will forward the traffic to the FreeSWITCH Kubernetes Service
+        $du = "sip:{{ include "fusionpbx.fullname" . }}-freeswitch:5060";
+        route(RELAY);
+    }
+    
+    route[RELAY] {
+        if (!t_relay()) {
+            sl_reply_error();
+        }
+        exit;
+    }
+{{- end }}

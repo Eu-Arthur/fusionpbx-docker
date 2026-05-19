@@ -17,9 +17,6 @@ spec:
         {{- include "fusionpbx.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: php-fpm
     spec:
-      {{- if .Values.phpFpm.hostNetwork }}
-      hostNetwork: true
-      {{- end }}
       containers:
         - name: php-fpm
           image: "{{ .Values.phpFpm.image.repository }}:{{ .Values.phpFpm.image.tag }}"

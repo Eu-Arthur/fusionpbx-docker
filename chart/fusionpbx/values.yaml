@@ -68,14 +68,12 @@ nginx:
   image:
     repository: nginx
     tag: alpine
-  hostNetwork: true
   
 phpFpm:
   replicaCount: 1
   image:
     repository: ghcr.io/eu-arthur/php-fpm-fusionpbx
     tag: "latest"
-  hostNetwork: true
 
 freeswitch:
   # Set replicaCount > 1 for High Availability (HA)
@@ -83,8 +81,16 @@ freeswitch:
   image:
     repository: ghcr.io/eu-arthur/freeswitch-fusionpbx
     tag: "latest"
-  hostNetwork: true
   capAdd:
     - SYS_RESOURCE
     - SYS_NICE
     - IPC_LOCK
+
+kamailio:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: ghcr.io/kamailio/kamailio
+    tag: "latest"
+  service:
+    type: LoadBalancer

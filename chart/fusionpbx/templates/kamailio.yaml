@@ -1,0 +1,61 @@
+{{- if .Values.kamailio.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "fusionpbx.fullname" . }}-kamailio
+  labels:
+    {{- include "fusionpbx.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kamailio
+spec:
+  replicas: {{ .Values.kamailio.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "fusionpbx.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: kamailio
+  template:
+    metadata:
+      labels:
+        {{- include "fusionpbx.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: kamailio
+    spec:
+      containers:
+        - name: kamailio
+          image: "{{ .Values.kamailio.image.repository }}:{{ .Values.kamailio.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5060
+              protocol: TCP
+              name: sip-tcp
+            - containerPort: 5060
+              protocol: UDP
+              name: sip-udp
+          volumeMounts:
+            - name: kamailio-config
+              mountPath: /etc/kamailio
+      volumes:
+        - name: kamailio-config
+          configMap:
+            name: {{ include "fusionpbx.fullname" . }}-kamailio
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "fusionpbx.fullname" . }}-kamailio
+  labels:
+    {{- include "fusionpbx.labels" . | nindent 4 }}
+    app.kubernetes.io/component: kamailio
+spec:
+  type: {{ .Values.kamailio.service.type | default "ClusterIP" }}
+  ports:
+    - port: 5060
+      targetPort: 5060
+      protocol: TCP
+      name: sip-tcp
+    - port: 5060
+      targetPort: 5060
+      protocol: UDP
+      name: sip-udp
+  selector:
+    {{- include "fusionpbx.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: kamailio
+{{- end }}

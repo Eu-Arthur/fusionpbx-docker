@@ -17,9 +17,6 @@ spec:
         {{- include "fusionpbx.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: nginx
     spec:
-      {{- if .Values.nginx.hostNetwork }}
-      hostNetwork: true
-      {{- end }}
       containers:
         - name: nginx
           image: "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag }}"
