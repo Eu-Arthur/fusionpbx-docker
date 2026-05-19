@@ -38,7 +38,16 @@ ENV LANG=en_US.utf8
 #      https://freeswitch.signalwire.com/repo/deb/debian-release/signalwire-freeswitch-repo.gpg \
 #     && echo "machine freeswitch.signalwire.com login signalwire password ${TOKEN}" > /etc/apt/auth.conf \
 #     && echo "deb [signed-by=/usr/share/keyrings/signalwire-freeswitch-repo.gpg] https://freeswitch.signalwire.com/repo/deb/debian-release/ ${DEBIAN_VERSION} main" > /etc/apt/sources.list.d/freeswitch.list \
-RUN curl -sSL https://freeswitch.org/fsget | bash -s ${TOKEN} release \
+RUN case "${TOKEN}" in \
+      pat_*|ghapat_*) ;; \
+      *) \
+        echo "ERROR: FreeSWITCH installation requires a valid SignalWire Personal Access Token starting with 'pat_' or 'ghapat_'." >&2; \
+        echo "Please obtain a token from https://signalwire.com and build with:" >&2; \
+        echo "  docker build --build-arg TOKEN=pat_xxx ..." >&2; \
+        exit 1; \
+        ;; \
+    esac \
+    && curl -sSL https://freeswitch.org/fsget | bash -s ${TOKEN} release \
     && apt-get -qq update \
     && apt-get install -y ${FS_META_PACKAGE}
 

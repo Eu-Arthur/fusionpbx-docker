@@ -53,9 +53,10 @@ jobs:
           IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
 
           if [ -z "$SIGNALWIRE_TOKEN" ]; then
-            echo "SIGNALWIRE_TOKEN secret is not set. Using default token from Dockerfile if any."
-            docker build -f docker_files/freeswitch_master/Dockerfile -t $IMAGE_NAME docker_files/freeswitch_master/
-          else
-            docker build --build-arg TOKEN="${SIGNALWIRE_TOKEN}" -f docker_files/freeswitch_master/Dockerfile -t $IMAGE_NAME docker_files/freeswitch_master/
+            echo "::error::SIGNALWIRE_TOKEN secret is not set. FreeSWITCH custom image cannot be built without a valid SignalWire Personal Access Token."
+            echo "::error::Please sign up at https://signalwire.com, generate a Personal Access Token (PAT), and add it to your repository secrets as 'SIGNALWIRE_TOKEN'."
+            exit 1
           fi
+
+          docker build --build-arg TOKEN="${SIGNALWIRE_TOKEN}" -f docker_files/freeswitch_master/Dockerfile -t $IMAGE_NAME docker_files/freeswitch_master/
           docker push $IMAGE_NAME
