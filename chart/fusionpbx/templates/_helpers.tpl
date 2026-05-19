@@ -109,3 +109,36 @@ FreeSWITCH PostgreSQL DSN
 {{- define "fusionpbx.freeswitch.dsn" -}}
 pgsql://hostaddr={{ include "fusionpbx.postgresql.host" . }} port={{ include "fusionpbx.postgresql.port" . }} dbname={{ include "fusionpbx.postgresql.database" . }} user={{ include "fusionpbx.postgresql.user" . }} password={{ include "fusionpbx.postgresql.password" . }}
 {{- end -}}
+
+{{/*
+PostgreSQL Environment Variables from Secret
+*/}}
+{{- define "fusionpbx.postgresql.envs" -}}
+{{- $secretName := default (printf "%s-postgresql-credentials" (include "fusionpbx.fullname" .)) .Values.postgresql.secret.name -}}
+{{- $keys := .Values.postgresql.secret.keys -}}
+- name: DATABASE_HOST
+  valueFrom:
+    secretKeyRef:
+      name: {{ $secretName }}
+      key: {{ default "host" $keys.host }}
+- name: DATABASE_PORT
+  valueFrom:
+    secretKeyRef:
+      name: {{ $secretName }}
+      key: {{ default "port" $keys.port }}
+- name: DATABASE_USERNAME
+  valueFrom:
+    secretKeyRef:
+      name: {{ $secretName }}
+      key: {{ default "username" $keys.username }}
+- name: DATABASE_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      name: {{ $secretName }}
+      key: {{ default "password" $keys.password }}
+- name: DATABASE_NAME
+  valueFrom:
+    secretKeyRef:
+      name: {{ $secretName }}
+      key: {{ default "database" $keys.database }}
+{{- end -}}

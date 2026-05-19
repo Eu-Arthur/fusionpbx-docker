@@ -41,8 +41,9 @@ jobs:
           IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
           IMAGE_TAG="${{ env.FUSIONPBX_VERSION }}-${{ github.run_number }}"
 
-          docker build -f docker_files/php-fpm-fusionpbx -t $IMAGE_NAME:$IMAGE_TAG docker_files/
+          docker build -f docker_files/php-fpm-fusionpbx -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest docker_files/
           docker push $IMAGE_NAME:$IMAGE_TAG
+          docker push $IMAGE_NAME:latest
 
       - name: Build and Push FreeSWITCH Custom Image
         env:
@@ -58,5 +59,6 @@ jobs:
             exit 1
           fi
 
-          docker build --build-arg TOKEN="${SIGNALWIRE_TOKEN}" -f docker_files/freeswitch_master/Dockerfile -t $IMAGE_NAME:$IMAGE_TAG docker_files/freeswitch_master/
+          docker build --build-arg TOKEN="${SIGNALWIRE_TOKEN}" -f docker_files/freeswitch_master/Dockerfile -t $IMAGE_NAME:$IMAGE_TAG -t $IMAGE_NAME:latest docker_files/freeswitch_master/
           docker push $IMAGE_NAME:$IMAGE_TAG
+          docker push $IMAGE_NAME:latest

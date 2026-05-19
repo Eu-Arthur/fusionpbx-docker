@@ -45,18 +45,7 @@ spec:
               add:
                 {{- toYaml .Values.freeswitch.capAdd | nindent 16 }}
           env:
-            - name: FS_PG_DSN
-              value: {{ include "fusionpbx.freeswitch.dsn" . | quote }}
-            - name: DATABASE_HOST
-              value: {{ include "fusionpbx.postgresql.host" . | quote }}
-            - name: DATABASE_PORT
-              value: {{ include "fusionpbx.postgresql.port" . | quote }}
-            - name: DATABASE_USERNAME
-              value: {{ include "fusionpbx.postgresql.user" . | quote }}
-            - name: DATABASE_PASSWORD
-              value: {{ include "fusionpbx.postgresql.password" . | quote }}
-            - name: DATABASE_NAME
-              value: {{ include "fusionpbx.postgresql.database" . | quote }}
+            {{- include "fusionpbx.postgresql.envs" . | nindent 12 }}
           ports:
             - containerPort: 8021
               protocol: TCP

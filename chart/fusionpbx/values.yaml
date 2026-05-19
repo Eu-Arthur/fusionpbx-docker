@@ -52,6 +52,16 @@ postgresql:
     username: fusionpbx
     password: fusionpbx_password
     database: fusionpbx
+  
+  # Existing secret configuration (e.g. for CNPG)
+  secret:
+    name: "" # If defined, uses this existing secret instead of auth/external
+    keys:
+      host: host
+      port: port
+      username: username
+      password: password
+      database: database
 
 nginx:
   replicaCount: 1
@@ -63,18 +73,16 @@ nginx:
 phpFpm:
   replicaCount: 1
   image:
-    # Adjust this to match your GHCR image or local built image
-    repository: php-8.2-fpm
-    tag: "20250817"
+    repository: ghcr.io/eu-arthur/php-fpm-fusionpbx
+    tag: "latest"
   hostNetwork: true
 
 freeswitch:
   # Set replicaCount > 1 for High Availability (HA)
   replicaCount: 2
   image:
-    # Adjust this to match your GHCR image or local built image
-    repository: freeswitch
-    tag: "20250817"
+    repository: ghcr.io/eu-arthur/freeswitch-fusionpbx
+    tag: "latest"
   hostNetwork: true
   capAdd:
     - SYS_RESOURCE
