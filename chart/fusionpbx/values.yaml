@@ -94,3 +94,19 @@ kamailio:
     tag: "latest"
   service:
     type: LoadBalancer
+  security:
+    # 1 & 2. Anti-flood and IP Banning using pike and htable
+    antiFlood:
+      enabled: true
+      samplingTimeUnit: 2
+      reqsDensityPerUnit: 20
+      banDuration: 300 # seconds
+    
+    # 4 & 6. Block known SIP scanners
+    blockScanners:
+      enabled: true
+      userAgents: "friendly-scanner|sipcli|sipvicious|VaxSIPUserAgent|pplsip"
+    
+    # 3 & 5. ACLs and Open Relay Prevention
+    # Define a list of authorized trunk IPs. If empty, all IPs are processed (relying on FreeSWITCH auth).
+    trustedIps: []

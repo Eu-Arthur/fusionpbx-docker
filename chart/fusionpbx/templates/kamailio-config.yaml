@@ -1,4 +1,4 @@
-{{- if .Values.freeswitch.kamailio.enabled }}
+{{- if .Values.kamailio.enabled }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -40,6 +40,16 @@ data:
     loadmodule "tm.so"
     loadmodule "tmx.so"
     loadmodule "dispatcher.so"
+    {{- if .Values.kamailio.security.antiFlood.enabled }}
+    loadmodule "htable.so"
+    loadmodule "pike.so"
+    
+    # Anti-Flood Parameters
+    modparam("htable", "htable", "ipban=>size=8;autoexpire={{ .Values.kamailio.security.antiFlood.banDuration }};")
+    modparam("pike", "sampling_time_unit", {{ .Values.kamailio.security.antiFlood.samplingTimeUnit }})
+    modparam("pike", "reqs_density_per_unit", {{ .Values.kamailio.security.antiFlood.reqsDensityPerUnit }})
+    modparam("pike", "remove_latency", 4)
+    {{- end }}
     
     # Route logic
     route {
@@ -48,6 +58,50 @@ data:
             sl_send_reply("483", "Too Many Hops");
             exit;
         }
+        
+        {{- if .Values.kamailio.security.blockScanners.enabled }}
+        # 6. Block known scanners by User-Agent
+        if ($ua =~ "{{ .Values.kamailio.security.blockScanners.userAgents }}") {
+            xlog("L_WARN", "Scanner UA blocked: $ua from $si\n");
+            drop;
+        }
+        {{- end }}
+        
+        {{- if .Values.kamailio.security.antiFlood.enabled }}
+        # 2. Check if IP is already banned
+        if ($sht(ipban=>$si) != $null) {
+            drop;
+        }
+
+        # 1. Detect SIP Flood
+        if (!pike_check_req()) {
+            xlog("L_WARN", "Banning SIP flooder $si for {{ .Values.kamailio.security.antiFlood.banDuration }}s\n");
+            $sht(ipban=>$si) = 1;
+            drop;
+        }
+        {{- end }}
+
+        {{- if .Values.kamailio.security.trustedIps }}
+        # 3 & 5. ACL Check: Only allow traffic from trusted IPs for initial invites (Open Relay Prevention)
+        # Note: You can expand this to check a permissions database or specific trunks.
+        if (is_method("INVITE") || is_method("REGISTER")) {
+            $var(is_trusted) = 0;
+            {{- range .Values.kamailio.security.trustedIps }}
+            if ($si == "{{ . }}") {
+                $var(is_trusted) = 1;
+            }
+            {{- end }}
+            
+            # If not in trusted list, reject. 
+            # In a real environment, you might allow REGISTER from anywhere but require auth.
+            # This is a strict ACL block based on the values provided.
+            if ($var(is_trusted) == 0) {
+                xlog("L_WARN", "Rejected request from unauthorized IP $si\n");
+                sl_send_reply("403", "Forbidden");
+                exit;
+            }
+        }
+        {{- end }}
 
         if (msg_apply_changes()) {
             # Changes applied
