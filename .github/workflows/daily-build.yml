@@ -37,20 +37,20 @@ jobs:
 
       - name: Build and Push PHP-FPM Custom Image
         run: |
-          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/php-fpm-fusionpbx-${{ env.FUSIONPBX_VERSION }}-${{ github.run_number }}"
-          # Convert to lowercase as GHCR requires lowercase repository names
+          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/php-fpm-fusionpbx"
           IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
+          IMAGE_TAG="${{ env.FUSIONPBX_VERSION }}-${{ github.run_number }}"
 
-          docker build -f docker_files/php-fpm-fusionpbx -t $IMAGE_NAME docker_files/
-          docker push $IMAGE_NAME
+          docker build -f docker_files/php-fpm-fusionpbx -t $IMAGE_NAME:$IMAGE_TAG docker_files/
+          docker push $IMAGE_NAME:$IMAGE_TAG
 
       - name: Build and Push FreeSWITCH Custom Image
         env:
           SIGNALWIRE_TOKEN: ${{ secrets.SIGNALWIRE_TOKEN }}
         run: |
-          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/freeswitch-fusionpbx-${{ env.FUSIONPBX_VERSION }}-${{ github.run_number }}"
-          # Convert to lowercase
+          IMAGE_NAME="ghcr.io/${{ github.repository_owner }}/freeswitch-fusionpbx"
           IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
+          IMAGE_TAG="${{ env.FUSIONPBX_VERSION }}-${{ github.run_number }}"
 
           if [ -z "$SIGNALWIRE_TOKEN" ]; then
             echo "::error::SIGNALWIRE_TOKEN secret is not set. FreeSWITCH custom image cannot be built without a valid SignalWire Personal Access Token."
@@ -58,5 +58,5 @@ jobs:
             exit 1
           fi
 
-          docker build --build-arg TOKEN="${SIGNALWIRE_TOKEN}" -f docker_files/freeswitch_master/Dockerfile -t $IMAGE_NAME docker_files/freeswitch_master/
-          docker push $IMAGE_NAME
+          docker build --build-arg TOKEN="${SIGNALWIRE_TOKEN}" -f docker_files/freeswitch_master/Dockerfile -t $IMAGE_NAME:$IMAGE_TAG docker_files/freeswitch_master/
+          docker push $IMAGE_NAME:$IMAGE_TAG
